@@ -8,7 +8,7 @@ import HistoryLog from "./components/HistoryLog";
 import Notification from "./components/Notification";
 
 // The API base URL for your backend
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://rankrally-server.vercel.app/";
 
 export default function App() {
   // --- State Management ---
