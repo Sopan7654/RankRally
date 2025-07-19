@@ -50,6 +50,11 @@ const emitUpdates = async () => {
 
 // --- API Endpoints ---
 
+// ADDED: Welcome message for the root URL
+app.get('/', (req, res) => {
+    res.send('Welcome to the Rank Royale API! The server is running.');
+});
+
 // GET /users - Fetch all users, sorted by points
 app.get('/api/users', async (req, res) => {
   try {
@@ -90,8 +95,6 @@ app.post('/api/claim', async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
-
-    // REMOVED: The entire cooldown logic block has been deleted.
     
     const pointsGained = Math.floor(Math.random() * 10) + 1;
     user.points += pointsGained;
@@ -137,11 +140,18 @@ async function seedDatabase() {
   try {
     const userCount = await User.countDocuments();
     if (userCount === 0) {
-      console.log('No users found, seeding database...');
+      console.log('No users found, seeding database with 10 users...');
       const initialUsers = [
-        { name: "Rahul", points: 50, img: "https://placehold.co/100x100/f87171/ffffff?text=R" },
-        { name: "Kamal", points: 80, img: "https://placehold.co/100x100/60a5fa/ffffff?text=K" },
-        { name: "Sanak", points: 25, img: "https://placehold.co/100x100/34d399/ffffff?text=S" },
+        { name: "Rahul", points: 68, img: "https://placehold.co/100x100/f87171/ffffff?text=R" },
+        { name: "Kamal", points: 96, img: "https://placehold.co/100x100/60a5fa/ffffff?text=K" },
+        { name: "Sanak", points: 40, img: "https://placehold.co/100x100/34d399/ffffff?text=S" },
+        { name: "Sai", points: 86, img: "https://placehold.co/100x100/c084fc/ffffff?text=S" },
+        { name: "Priya", points: 75, img: "https://placehold.co/100x100/fbbf24/ffffff?text=P" },
+        { name: "Amit", points: 55, img: "https://placehold.co/100x100/a3e635/ffffff?text=A" },
+        { name: "Deepika", points: 92, img: "https://placehold.co/100x100/22d3ee/ffffff?text=D" },
+        { name: "Vikram", points: 30, img: "https://placehold.co/100x100/f472b6/ffffff?text=V" },
+        { name: "Anjali", points: 88, img: "https://placehold.co/100x100/818cf8/ffffff?text=A" },
+        { name: "Rohan", points: 62, img: "https://placehold.co/100x100/f97316/ffffff?text=R" }
       ];
       await User.insertMany(initialUsers);
       console.log('Database seeded!');
