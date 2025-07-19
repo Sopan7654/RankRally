@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 // FIXED: Set up CORS options to allow both local and deployed frontend URLs
 const allowedOrigins = [
-  "http://localhost:3000",
+  "https://rankrally-client.vercel.app/",
   process.env.FRONTEND_URL, // Your live frontend URL from Vercel environment variables
 ];
 
