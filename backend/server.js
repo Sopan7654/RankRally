@@ -11,22 +11,20 @@ const History = require("./models/history.model");
 const app = express();
 const server = http.createServer(app);
 
-// FIXED: Set up CORS options to allow both local and deployed frontend URLs
+// Set up CORS options to allow both local and deployed frontend URLs
 const allowedOrigins = [
-  "https://rankrally-client.vercel.app/",
-  process.env.FRONTEND_URL, // Your live frontend URL from Vercel environment variables
+  "http://localhost:3000",
+  // FIXED: Removed trailing slash and now relying on the env variable you set on Vercel
+  process.env.FRONTEND_URL,
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg =
-        "The CORS policy for this site does not allow access from the specified Origin.";
-      return callback(new Error(msg), false);
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
     }
-    return callback(null, true);
   },
 };
 
@@ -64,13 +62,10 @@ const emitUpdates = async () => {
 };
 
 // --- API Endpoints ---
-
-// ADDED: Welcome message for the root URL
 app.get("/", (req, res) => {
   res.send("Welcome to the Rank Royale API! The server is running.");
 });
 
-// GET /users - Fetch all users, sorted by points
 app.get("/api/users", async (req, res) => {
   try {
     const users = await User.find().sort({ points: -1 });
@@ -80,7 +75,6 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// POST /users - Add a new user
 app.post("/api/users", async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ message: "Name is required" });
@@ -105,7 +99,6 @@ app.post("/api/users", async (req, res) => {
   }
 });
 
-// POST /claim - Claim points for a user
 app.post("/api/claim", async (req, res) => {
   const { userId } = req.body;
   if (!userId) return res.status(400).json({ message: "User ID is required" });
@@ -132,7 +125,6 @@ app.post("/api/claim", async (req, res) => {
   }
 });
 
-// GET /history - Fetch claim history
 app.get("/api/history", async (req, res) => {
   try {
     const history = await History.find().sort({ timestamp: -1 });
@@ -161,6 +153,7 @@ async function seedDatabase() {
     const userCount = await User.countDocuments();
     if (userCount === 0) {
       console.log("No users found, seeding database with 10 users...");
+      // FIXED: Expanded the initial user list to 10.
       const initialUsers = [
         {
           name: "Rahul",

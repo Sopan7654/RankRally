@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import io from 'socket.io-client';
 
 // Import your components
 import DecorativeBackground from "./components/DecorativeBackground";
@@ -7,70 +8,55 @@ import UserActions from "./components/UserActions";
 import HistoryLog from "./components/HistoryLog";
 import Notification from "./components/Notification";
 
-// The API base URL for your backend
-const API_URL = "https://rankrally-server.vercel.app/";
+// FIXED: Added '/api' to the end of the URL.
+const API_URL = "https://rankrally-server.vercel.app/api";
+// ADDED: The base URL for the WebSocket connection.
+const SOCKET_URL = "https://rankrally-server.vercel.app";
 
 export default function App() {
   // --- State Management ---
   const [users, setUsers] = useState([]);
-  const [rankingType, setRankingType] = useState("Hourly");
-  const [timeLeft, setTimeLeft] = useState(45 * 60 + 34);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newUserName, setNewUserName] = useState("");
   const [notification, setNotification] = useState({ message: "", type: "" });
 
-  // --- Data Fetching from Backend ---
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_URL}/users`);
-      const data = await response.json();
-
-      // FIXED: Check if the response was successful and is an array
-      if (response.ok) {
-        setUsers(data);
-        // Set the default selected user once data is fetched
-        if (data.length > 0 && !selectedUserId) {
-          setSelectedUserId(data[0]._id);
+  // --- Data Fetching & Real-Time Updates ---
+  useEffect(() => {
+    // Fetch initial data when the component first loads
+    const fetchInitialData = async () => {
+      try {
+        const [usersRes, historyRes] = await Promise.all([
+          fetch(`${API_URL}/users`),
+          fetch(`${API_URL}/history`),
+        ]);
+        const usersData = await usersRes.json();
+        const historyData = await historyRes.json();
+        if (usersRes.ok) setUsers(usersData);
+        if (historyRes.ok) setHistory(historyData);
+        if (usersData.length > 0 && !selectedUserId) {
+          setSelectedUserId(usersData[0]._id);
         }
-      } else {
-        throw new Error(data.message || "Failed to fetch users");
+      } catch (error) {
+        setNotification({ message: "Could not connect to the server.", type: "error" });
       }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-      setUsers([]); // Ensure users is an empty array on error to prevent crashes
-      setNotification({
-        message: error.message || "Could not connect to the server.",
-        type: "error",
-      });
-    }
+    };
+    fetchInitialData();
+
+    // Establish WebSocket connection for real-time updates
+    const socket = io(SOCKET_URL);
+    socket.on('update', (data) => {
+      setUsers(data.users);
+      setHistory(data.history);
+    });
+
+    // Disconnect socket on cleanup
+    return () => socket.disconnect();
   }, [selectedUserId]);
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_URL}/history`);
-      const data = await response.json();
 
-      // FIXED: Check if the response was successful
-      if (response.ok) {
-        setHistory(data);
-      } else {
-        throw new Error(data.message || "Failed to fetch history");
-      }
-    } catch (error) {
-      console.error("Failed to fetch history:", error);
-      setHistory([]); // Ensure history is an empty array on error
-    }
-  }, []);
-
-  // Fetch initial data when the component mounts
-  useEffect(() => {
-    fetchUsers();
-    fetchHistory();
-  }, [fetchUsers, fetchHistory]);
-
-  // --- Sorting and Data Calculation (No change needed here) ---
+  // --- Sorting and Data Calculation ---
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => b.points - a.points),
     [users]
@@ -87,27 +73,21 @@ export default function App() {
         body: JSON.stringify({ userId: selectedUserId }),
       });
       const data = await response.json();
-
       if (response.ok) {
-        // Refetch users and history to get the latest data
-        fetchUsers();
-        fetchHistory();
         setNotification({ message: data.message, type: "success" });
       } else {
         throw new Error(data.message);
       }
     } catch (error) {
-      console.error("Failed to claim points:", error);
-      setNotification({
-        message: error.message || "Error claiming points.",
-        type: "error",
-      });
+      setNotification({ message: error.message || "Error claiming points.", type: "error" });
     } finally {
       setIsLoading(false);
     }
-  }, [selectedUserId, fetchUsers, fetchHistory]);
+  }, [selectedUserId]);
 
-  const handleAddUser = useCallback(async () => {
+  const handleAddUser = useCallback(async (e) => {
+    // FIXED: Added event 'e' and preventDefault to stop page reloads.
+    e.preventDefault();
     if (newUserName.trim()) {
       try {
         const response = await fetch(`${API_URL}/users`, {
@@ -117,41 +97,16 @@ export default function App() {
         });
         const newUser = await response.json();
         if (response.ok) {
-          // Refetch users to update the list
-          fetchUsers();
-          setNotification({
-            message: `User "${newUser.name}" added successfully!`,
-            type: "success",
-          });
+          setNotification({ message: `User "${newUser.name}" added successfully!`, type: "success" });
           setNewUserName("");
         } else {
           throw new Error(newUser.message);
         }
       } catch (error) {
-        console.error("Failed to add user:", error);
-        setNotification({
-          message: error.message || "Error adding user.",
-          type: "error",
-        });
+        setNotification({ message: error.message || "Error adding user.", type: "error" });
       }
     }
-  }, [newUserName, fetchUsers]);
-
-  // --- Countdown Timer Effect (No change needed here) ---
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(
-      () => setTimeLeft((prevTime) => prevTime - 1),
-      1000
-    );
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
+  }, [newUserName]);
 
   return (
     <div className="relative min-h-screen font-sans">
@@ -163,32 +118,15 @@ export default function App() {
       />
       <div className="relative z-10">
         <header className="p-4 bg-white/30 backdrop-blur-sm">
+          {/* REMOVED: Top navigation bar */}
           <div className="max-w-7xl mx-auto flex justify-between items-center text-gray-700">
             <h1 className="text-2xl font-bold text-purple-800">RankRally</h1>
-            {/* <nav className="flex justify-center space-x-6 text-base font-semibold">
-              {["Live", "Hourly", "Family", "Wealth"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setRankingType(type)}
-                  className={`pb-1 transition-all duration-300 ${
-                    rankingType === type
-                      ? "text-purple-600 border-b-2 border-purple-600"
-                      : "text-gray-500 hover:text-purple-500"
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </nav> */}
           </div>
         </header>
 
         <main className="max-w-7xl mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Leaderboard
-            users={sortedUsers}
-            formatTime={formatTime}
-            timeLeft={timeLeft}
-          />
+          {/* REMOVED: timeLeft and formatTime props */}
+          <Leaderboard users={sortedUsers} />
 
           <div className="lg:col-span-1 flex flex-col gap-8">
             <UserActions
