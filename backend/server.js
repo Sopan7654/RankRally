@@ -14,12 +14,12 @@ const server = http.createServer(app);
 // Set up CORS options to allow both local and deployed frontend URLs
 const allowedOrigins = [
   "http://localhost:3000",
-  // FIXED: Removed trailing slash and now relying on the env variable you set on Vercel
-  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL, // Your live frontend URL from Vercel environment variables
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests) or from our allowed list
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -153,28 +153,17 @@ async function seedDatabase() {
     const userCount = await User.countDocuments();
     if (userCount === 0) {
       console.log("No users found, seeding database with 10 users...");
-      // FIXED: Expanded the initial user list to 10.
       const initialUsers = [
-        {
-          name: "Rahul",
-          points: 68,
-          img: "https://placehold.co/100x100/f87171/ffffff?text=R",
-        },
-        {
-          name: "Kamal",
-          points: 96,
-          img: "https://placehold.co/100x100/60a5fa/ffffff?text=K",
-        },
-        {
-          name: "Sanak",
-          points: 40,
-          img: "https://placehold.co/100x100/34d399/ffffff?text=S",
-        },
-        {
-          name: "Sai",
-          points: 86,
-          img: "https://placehold.co/100x100/c084fc/ffffff?text=S",
-        },
+        { name: "Rahul", points: 68, img: "https://placehold.co/100x100/f87171/ffffff?text=R" },
+        { name: "Kamal", points: 96, img: "https://placehold.co/100x100/60a5fa/ffffff?text=K" },
+        { name: "Sanak", points: 40, img: "https://placehold.co/100x100/34d399/ffffff?text=S" },
+        { name: "Sai", points: 86, img: "https://placehold.co/100x100/c084fc/ffffff?text=S" },
+        { name: "Priya", points: 75, img: "https://placehold.co/100x100/fbbf24/ffffff?text=P" },
+        { name: "Amit", points: 55, img: "https://placehold.co/100x100/a3e635/ffffff?text=A" },
+        { name: "Deepika", points: 92, img: "https://placehold.co/100x100/22d3ee/ffffff?text=D" },
+        { name: "Vikram", points: 30, img: "https://placehold.co/100x100/f472b6/ffffff?text=V" },
+        { name: "Anjali", points: 88, img: "https://placehold.co/100x100/818cf8/ffffff?text=A" },
+        { name: "Rohan", points: 62, img: "https://placehold.co/100x100/f97316/ffffff?text=R" }
       ];
       await User.insertMany(initialUsers);
       console.log("Database seeded!");
